@@ -21,6 +21,7 @@ description: |
 ### Step 1 — อ่านและทำความเข้าใจ Input
 
 **HTML:**
+- ตรวจสอบว่ามี tag `<tab>...</tab>` หรือไม่ เพื่อแบ่ง tab (ดูรายละเอียด Step 1.1)
 - ระบุ cell/placeholder ทุกจุดที่ต้องการแสดงตัวเลข
 - สังเกต label ข้างๆ เพื่ออนุมานว่า cell นั้นคือบัญชีอะไร
 - หา pattern ที่อาจเป็น Formula (เช่น "รายได้รวม", "กำไรสุทธิ", "รวมสินทรัพย์")
@@ -30,6 +31,59 @@ description: |
 - ระบุ columns ที่มี: รหัสบัญชี, ชื่อบัญชี, `is_credit`
 - Map ชื่อบัญชีจาก HTML → รหัสบัญชีใน CSV
 - บันทึก `is_credit` ของแต่ละบัญชีไว้ใช้คำนวณ consolidated formula
+
+---
+
+### Step 1.1 — แยก Tab จาก HTML
+
+#### กรณีมี `<tab>` tag
+
+User ระบุ tab โดยครอบเนื้อหาแต่ละ tab ด้วย tag `<tab name="ชื่อ tab">`:
+
+```html
+<tab name="งบกำไรขาดทุน">
+  <table>
+    <tr><td>รายได้จากการขาย</td>...</tr>
+  </table>
+</tab>
+
+<tab name="งบดุล">
+  <table>
+    <tr><td>เงินสดและเงินฝากธนาคาร</td>...</tr>
+  </table>
+</tab>
+```
+
+- แต่ละ `<tab>` → 1 entry ใน `tabs[]`
+- `tab_name` ดึงจาก attribute `name`
+- `sort_order` เรียงตามลำดับที่ปรากฏใน HTML (1, 2, 3...)
+- `template_html` คือ HTML ข้างใน `<tab>` (ไม่รวม tag `<tab>` เอง)
+
+#### กรณีไม่มี `<tab>` tag
+
+ถือว่ามี **1 tab** — ใช้ HTML ทั้งหมดเป็น `template_html` และตั้ง `tab_name` ตามชื่อ template หรือถาม user
+
+#### ตัวอย่าง tabs[] output
+
+```json
+"tabs": [
+  {
+    "tab_name": "งบกำไรขาดทุน",
+    "sort_order": 1,
+    "template_html": "<table>...</table>"
+  },
+  {
+    "tab_name": "งบดุล",
+    "sort_order": 2,
+    "template_html": "<table>...</table>"
+  }
+]
+```
+
+#### กฎสำคัญ — Variables ใช้ร่วมกันทุก Tab
+
+`variables[]` เป็น **ระดับ template** — ตัวแปรทุกตัวจากทุก tab อยู่ใน array เดียวกัน ไม่แยกตาม tab
+ดังนั้นชื่อ variable ต้องไม่ซ้ำกันข้าม tab แม้จะเป็นบัญชีเดียวกัน
 
 ---
 
@@ -155,8 +209,13 @@ is_credit = true (หนี้สิน, ทุน, รายได้):
   ],
   "tabs": [
     {
-      "tab_name": "<ชื่อ tab>",
+      "tab_name": "งบกำไรขาดทุน",
       "sort_order": 1,
+      "template_html": "<table>...</table>"
+    },
+    {
+      "tab_name": "งบดุล",
+      "sort_order": 2,
       "template_html": "<table>...</table>"
     }
   ]
@@ -169,12 +228,13 @@ is_credit = true (หนี้สิน, ทุน, รายได้):
 
 ### Step 7 — ตรวจสอบก่อนส่ง
 
-- [ ] ทุก `%variable%` ใน `template_html` มีนิยามใน `variables[]`
-- [ ] ไม่มี variable ที่นิยามซ้ำกัน
+- [ ] ทุก `%variable%` ใน `template_html` ทุก tab มีนิยามใน `variables[]`
+- [ ] ไม่มี variable ที่นิยามซ้ำกัน (ข้าม tab ด้วย)
 - [ ] `sort_order` ของ Formula Variable > ตัวแปรที่อ้างถึงทุกตัว
 - [ ] `adj_d` / `adj_c` ไม่มี `branch_code` field
 - [ ] `_total` formula ใช้ is_credit ถูกต้อง (บวก adj_d หรือ adj_c)
 - [ ] ไม่มีตัวแปรตัวเดียวกันที่ระบุทั้ง `account` และ `formula`
+- [ ] `tabs[]` เรียงตาม `sort_order` ตามลำดับที่ปรากฏใน HTML
 
 ---
 
@@ -187,6 +247,7 @@ is_credit = true (หนี้สิน, ทุน, รายได้):
 - ไม่แน่ใจ `is_credit` ของบัญชีที่ใช้ range
 - ไม่แน่ใจสูตรของ Formula Variable (subtotal / consolidated)
 - บัญชีใน HTML ไม่มีใน CSV เลย
+- ไม่มี `<tab>` tag และไม่ชัดเจนว่า tab ควรชื่ออะไร
 
 **ปล่อยว่างได้เมื่อ:**
 - user ระบุชัดว่ารายการนั้นยังไม่มีข้อมูล ให้ `<td></td>` ว่างไว้ก่อน
@@ -195,10 +256,20 @@ is_credit = true (หนี้สิน, ทุน, รายได้):
 
 ## ตัวอย่าง
 
-### Input HTML (บางส่วน)
+### Input HTML พร้อม tab tags
 ```html
-<tr><td>เงินสดและเงินฝากธนาคาร</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
-<tr><td>กำไรสุทธิ</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tab name="งบกำไรขาดทุน">
+  <table>
+    <tr><td>รายได้จากการขาย</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+    <tr><td>กำไรสุทธิ</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+</tab>
+
+<tab name="งบดุล">
+  <table>
+    <tr><td>เงินสดและเงินฝากธนาคาร</td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>
+  </table>
+</tab>
 ```
 
 ### Input CSV (บางส่วน)
@@ -215,19 +286,23 @@ account_code,name_thai,is_credit
   "name": "กระดาษทำการ",
   "is_default": false,
   "variables": [
-    { "name": "%cash_bank_b0001%", "account": "111000,113000", "column": "net_carried_forward", "branch_code": "B0001", "sort_order": 1, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%cash_bank_b0002%", "account": "111000,113000", "column": "net_carried_forward", "branch_code": "B0002", "sort_order": 2, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%cash_bank_adj_d%", "account": "111000,113000", "column": "journal_adjustment_debit",  "sort_order": 6, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%cash_bank_adj_c%", "account": "111000,113000", "column": "journal_adjustment_credit", "sort_order": 7, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%cash_bank_total%", "formula": "%cash_bank_b0001% + %cash_bank_b0002% + %cash_bank_adj_d% - %cash_bank_adj_c%", "sort_order": 2001, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%net_profit_b0001%", "formula": "%total_rev_b0001% - %total_cost_b0001% - %sell_admin_exp_b0001%", "sort_order": 1100, "format": "0,0.00;(0,0.00);\"-\"" },
-    { "name": "%net_profit_total%",  "formula": "%net_profit_b0001% + %net_profit_b0002%", "sort_order": 2100, "format": "0,0.00;(0,0.00);\"-\"" }
+    { "name": "%rev_sale_b0001%", "account": "410001", "column": "period_balance", "branch_code": "B0001", "sort_order": 1, "format": "0,0.00;(0,0.00);\"-\"" },
+    { "name": "%rev_sale_adj_d%", "account": "410001", "column": "journal_adjustment_debit", "sort_order": 6, "format": "0,0.00;(0,0.00);\"-\"" },
+    { "name": "%rev_sale_adj_c%", "account": "410001", "column": "journal_adjustment_credit", "sort_order": 7, "format": "0,0.00;(0,0.00);\"-\"" },
+    { "name": "%rev_sale_total%", "formula": "%rev_sale_b0001% + %rev_sale_b0002% + %rev_sale_adj_c% - %rev_sale_adj_d%", "sort_order": 2001, "format": "0,0.00;(0,0.00);\"-\"" },
+    { "name": "%cash_bank_b0001%", "account": "111000,113000", "column": "net_carried_forward", "branch_code": "B0001", "sort_order": 50, "format": "0,0.00;(0,0.00);\"-\"" },
+    { "name": "%cash_bank_total%", "formula": "%cash_bank_b0001% + %cash_bank_b0002% + %cash_bank_adj_d% - %cash_bank_adj_c%", "sort_order": 2050, "format": "0,0.00;(0,0.00);\"-\"" }
   ],
   "tabs": [
     {
-      "tab_name": "กระดาษทำการ",
+      "tab_name": "งบกำไรขาดทุน",
       "sort_order": 1,
-      "template_html": "<tr><td>เงินสดและเงินฝากธนาคาร</td><td>%cash_bank_b0001%</td><td>%cash_bank_b0002%</td><td>%cash_bank_adj_d%</td><td>%cash_bank_adj_c%</td><td>%cash_bank_total%</td></tr>"
+      "template_html": "<table><tr><td>รายได้จากการขาย</td><td>%rev_sale_b0001%</td>...<td>%rev_sale_total%</td></tr></table>"
+    },
+    {
+      "tab_name": "งบดุล",
+      "sort_order": 2,
+      "template_html": "<table><tr><td>เงินสดและเงินฝากธนาคาร</td><td>%cash_bank_b0001%</td>...<td>%cash_bank_total%</td></tr></table>"
     }
   ]
 }
