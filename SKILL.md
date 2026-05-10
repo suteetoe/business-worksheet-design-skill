@@ -83,7 +83,9 @@ User ระบุ tab โดยครอบเนื้อหาแต่ละ 
 #### กฎสำคัญ — Variables ใช้ร่วมกันทุก Tab
 
 `variables[]` เป็น **ระดับ template** — ตัวแปรทุกตัวจากทุก tab อยู่ใน array เดียวกัน ไม่แยกตาม tab
-ดังนั้นชื่อ variable ต้องไม่ซ้ำกันข้าม tab แม้จะเป็นบัญชีเดียวกัน
+
+- **ใช้ซ้ำข้าม tab ได้** — หาก tab อื่นต้องการแสดงตัวแปรเดิม (เช่น `%net_profit_b0001%` ที่นิยามใน tab งบกำไรขาดทุน) ให้ใช้ชื่อเดิมใน `template_html` ของ tab นั้นได้เลย **ไม่ต้องนิยามซ้ำใน `variables[]`**
+- **ห้ามนิยาม variable ชื่อเดิมซ้ำ** — `variables[]` ต้องมีชื่อ variable ไม่ซ้ำกันเลย หากต้องการค่าเดิมในต่าง tab ให้อ้างชื่อเดิมใน `template_html` เท่านั้น
 
 ---
 
@@ -229,7 +231,8 @@ is_credit = true (หนี้สิน, ทุน, รายได้):
 ### Step 7 — ตรวจสอบก่อนส่ง
 
 - [ ] ทุก `%variable%` ใน `template_html` ทุก tab มีนิยามใน `variables[]`
-- [ ] ไม่มี variable ที่นิยามซ้ำกัน (ข้าม tab ด้วย)
+- [ ] ไม่มี variable ที่นิยามซ้ำกันใน `variables[]` (ชื่อต้อง unique ทั้ง template)
+- [ ] variable ที่ใช้ซ้ำข้าม tab — อ้างชื่อเดิมใน `template_html` เท่านั้น ไม่เพิ่มใน `variables[]`
 - [ ] `sort_order` ของ Formula Variable > ตัวแปรที่อ้างถึงทุกตัว
 - [ ] `adj_d` / `adj_c` ไม่มี `branch_code` field
 - [ ] `_total` formula ใช้ is_credit ถูกต้อง (บวก adj_d หรือ adj_c)
