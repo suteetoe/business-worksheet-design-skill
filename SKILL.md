@@ -120,15 +120,50 @@ User ระบุ tab โดยครอบเนื้อหาแต่ละ 
 
 #### เลือก `column` ตามประเภทและส่วนของงบ
 
-| งบ / ประเภทข้อมูล | column |
+column แบ่งเป็น 3 กลุ่ม — เลือกให้ตรงกับ data source และ branch filter ที่ต้องการ
+
+**กลุ่ม Summary** — ดึงจาก `gl_journal_summary_detail` รองรับ `branch_code` filter
+
+| column | คำอธิบาย | ใช้เมื่อ |
+|---|---|---|
+| `brought_forward_debit` | ยอดยกมา debit | ต้องการยอดยกมาแบบแยก debit |
+| `brought_forward_credit` | ยอดยกมา credit | ต้องการยอดยกมาแบบแยก credit |
+| `debit` | เดบิตระหว่างงวด | ต้องการยอดเดบิตประจำงวดดิบ |
+| `credit` | เครดิตระหว่างงวด | ต้องการยอดเครดิตประจำงวดดิบ |
+| `close_account_debit` | ปิดบัญชี debit | รายการปิดบัญชีแบบ debit |
+| `close_account_credit` | ปิดบัญชี credit | รายการปิดบัญชีแบบ credit |
+| `carried_forward_debit` | ยอดยกไป debit (Summary + Journal รวมกัน) | ยอดยกไปแบบแยก debit |
+| `carried_forward_credit` | ยอดยกไป credit (Summary + Journal รวมกัน) | ยอดยกไปแบบแยก credit |
+| `net_carried_forward` | `carried_forward_debit` − `carried_forward_credit` | ยอดคงเหลือสุทธิ (งบดุล) |
+
+**กลุ่ม Journal** — ดึงจาก `gl_journal_detail` **ไม่รองรับ** `branch_code` filter
+
+| column | คำอธิบาย | ใช้เมื่อ |
+|---|---|---|
+| `journal_adjustment_debit` | ยอดปรับปรุง debit จาก journal (รวมทุกสาขา) | คอลัมน์ปรับปรุง debit |
+| `journal_adjustment_credit` | ยอดปรับปรุง credit จาก journal (รวมทุกสาขา) | คอลัมน์ปรับปรุง credit |
+
+**กลุ่ม Balance (net)** — คำนวณ net ตาม `is_credit` ของบัญชี: credit-normal = credit − debit, debit-normal = debit − credit
+
+| column | แหล่งข้อมูล | `branch_code` | คำอธิบาย | ใช้เมื่อ |
+|---|---|---|---|---|
+| `brought_forward_balance` | Summary | รองรับ | ยอดยกมา net | ต้องการยอดยกมาสุทธิ (ต้นงวด) |
+| `period_balance` | Summary | รองรับ | ยอดระหว่างงวด net | **งบกำไรขาดทุน** (ตัวเลขประจำงวด) |
+| `close_account_balance` | Summary | รองรับ | ยอดปิดบัญชี net | รายการปิดบัญชีสุทธิ |
+| `carried_forward_balance` | Summary + Journal | รองรับ | ยอดยกไป net (รวม journal) | **งบดุล / งบกำไรสะสม** (ยอดคงเหลือ) |
+| `journal_adjustment_balance` | Journal | ไม่รองรับ | ยอดปรับปรุง net จาก journal | คอลัมน์ปรับปรุงสุทธิ |
+
+**สรุปการเลือก column ที่แนะนำตามงบ:**
+
+| งบ / ประเภทข้อมูล | column แนะนำ |
 |---|---|
 | งบกำไรขาดทุน (ตัวเลขประจำงวด) | `period_balance` |
-| งบดุล / งบกำไรสะสม (ยอดคงเหลือ) | `net_carried_forward` |
-| ยอดยกมา (สินค้าคงเหลือต้นงวด, กำไรสะสมต้นงวด) | `brought_forward_debit` หรือ `brought_forward_credit` |
-| ยอดยกไป (สินค้าคงเหลือปลายงวด) | `carried_forward_debit` หรือ `carried_forward_credit` |
-| รายการปรับปรุง (adj columns) | `journal_adjustment_debit` หรือ `journal_adjustment_credit` |
-
-> **หมายเหตุ:** `net_carried_forward` = carried_forward_debit − carried_forward_credit
+| งบดุล / งบกำไรสะสม (ยอดคงเหลือ) | `carried_forward_balance` หรือ `net_carried_forward` |
+| ยอดยกมาต้นงวด (net) | `brought_forward_balance` |
+| ยอดยกมาต้นงวด (แยก debit/credit) | `brought_forward_debit` / `brought_forward_credit` |
+| ยอดยกไปปลายงวด (แยก debit/credit) | `carried_forward_debit` / `carried_forward_credit` |
+| รายการปรับปรุง (แยก debit/credit) | `journal_adjustment_debit` / `journal_adjustment_credit` |
+| รายการปรับปรุง (net) | `journal_adjustment_balance` |
 
 #### รูปแบบ `account`
 
